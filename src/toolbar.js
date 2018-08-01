@@ -2,11 +2,17 @@ import React, { Component, PropTypes } from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { defaultColors, defaultItems } from './utils'
 
-const defaultProps =  {
-  items: defaultItems
-}
-
 class QuillToolbar extends Component {
+	constructor(props) {
+		super(props)
+		this.getClassName = this.getClassName.bind(this)
+		this.renderGroup = this.renderGroup.bind(this)
+		this.renderChoiceItem = this.renderChoiceItem.bind(this)
+		this.renderChoices = this.renderChoices.bind(this)
+		this.renderButton = this.renderButton.bind(this)
+		this.renderAction = this.renderAction.bind(this)
+		this.renderItem = this.renderItem.bind(this)
+	}
 
   getClassName() {
     return `quill-toolbar ${this.props.className || ''}`
@@ -129,5 +135,7 @@ QuillToolbar.propTypes = {
 }
 QuillToolbar.defaultItems = defaultItems
 QuillToolbar.defaultColors = defaultColors
-QuillToolbar.defaultProps = defaultProps
+QuillToolbar.defaultProps = {
+	items: defaultItems
+}
 export default QuillToolbar
