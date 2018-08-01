@@ -1,7 +1,16 @@
-import React, { Component } from 'react'
-import PropTypes from 'prop-types'
-import ReactDOMServer from 'react-dom/server'
-import { defaultColors, defaultItems } from './utils'
+// import React, { Component } from 'react'
+// import PropTypes from 'prop-types'
+// import ReactDOMServer from 'react-dom/server'
+// import { defaultColors, defaultItems } from './utils'
+
+var React = require('react')
+var Component = React.Component
+var PropTypes = require('prop-types')
+var ReactDOMServer = require('react-dom/server')
+var Utils = require('./utils')
+var defaultColors = Utils.defaultColors
+var defaultItems = Utils.defaultItems
+
 
 class QuillToolbar extends Component {
 	constructor(props) {

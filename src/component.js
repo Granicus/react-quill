@@ -1,9 +1,19 @@
-import React, { Component, cloneElement } from 'react'
-import PropTypes from 'prop-types'
-import Quill from 'quill'
-import ReactDOM from 'react-dom'
-import QuillToolbar from './toolbar'
-import { find } from './utils'
+// import React, { Component, cloneElement } from 'react'
+// import PropTypes from 'prop-types'
+// import Quill from 'quill'
+// import ReactDOM from 'react-dom'
+// import QuillToolbar from './toolbar'
+// import { find } from './utils'
+
+var React = require('react')
+var Component = React.Component
+var cloneElement = React.cloneElement
+var PropTypes = require('prop-types')
+var Quill = require('quill')
+var ReactDom = require('react-dom')
+var QuillToolbar = require('./toolbar')
+var Utils = require('./utils')
+var find = Utils.find
 
 const dirtyProps = [
   'id',
