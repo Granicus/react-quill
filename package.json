@@ -59,6 +59,6 @@
     "sinon": "^1.12.1",
     "travis-cov": "^0.2.5",
     "uglify-js": "^2.4.15",
-    "webpack": "^1.4.13"
+    "webpack": "fulls1z3/webpack#v2.2.1-harmony"
   }
 }
