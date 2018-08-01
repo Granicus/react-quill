@@ -2,39 +2,47 @@
 /* global ReactQuill */
 'use strict';
 
-var Editor = React.createClass({
-
-	getInitialState: function() {
-		return {
+class Editor extends React.Component {
+	constructor(props) {
+		super(props)
+		this.state = {
 			theme: 'snow',
 			enabled: true,
 			readOnly: false,
 			value: '<h1>It works!</h1>',
 			events: []
-		};
-	},
+		}
+		this.formatRange = this.formatRange.bind(this)
+		this.onTextareaChange = this.onTextareaChange.bind(this)
+		this.onEditorChange = this.onEditorChange.bind(this)
+		this.onEditorChangeSelection = this.onEditorChangeSelection.bind(this)
+		this.onToggle = this.onToggle.bind(this)
+		this.onToggleReadOnly = this.onToggleReadOnly.bind(this)
+		this.renderToolbar = this.renderToolbar.bind(this)
+		this.renderSidebar = this.renderSidebar.bind(this)
+	}
 
-	formatRange: function(range) {
+	formatRange(range) {
 		return range
 			? [range.start, range.end].join(',')
 			: 'none';
-	},
+	}
 
-	onTextareaChange: function(event) {
+	onTextareaChange(event) {
 		var value = event.target.value;
 		this.setState({ value:value });
-	},
+	}
 
-	onEditorChange: function(value, delta, source) {
+	onEditorChange(value, delta, source) {
 		this.setState({
 			value: value,
 			events: [
 				'text-change('+this.state.value+' -> '+value+')'
 			].concat(this.state.events)
 		});
-	},
+	}
 
-	onEditorChangeSelection: function(range, source) {
+	onEditorChangeSelection(range, source) {
 		this.setState({
 			selection: range,
 			events: [
@@ -45,21 +53,21 @@ var Editor = React.createClass({
 				+')'
 			].concat(this.state.events)
 		});
-	},
+	}
 
-	onToggle: function() {
+	onToggle() {
 		this.setState({ enabled: !this.state.enabled });
-	},
+	}
 
-	onToggleReadOnly: function() {
+	onToggleReadOnly() {
 		this.setState({ readOnly: !this.state.readOnly });
-	},
+	}
 
-	render: function() {
+	render() {
 		return (
-			React.DOM.div({},
+			DOM.div({},
 				this.renderToolbar(),
-				React.DOM.hr(),
+				DOM.hr(),
 				this.renderSidebar(),
 				this.state.enabled && ReactQuill({
 					theme: this.state.theme,
@@ -70,41 +78,41 @@ var Editor = React.createClass({
 				})
 			)
 		);
-	},
+	}
 
-	renderToolbar: function() {
+	renderToolbar() {
 		var state = this.state;
 		var enabled = state.enabled;
 		var readOnly = state.readOnly;
 		var selection = this.formatRange(state.selection);
 		return (
-			React.DOM.div({},
-				React.DOM.button({
+			DOM.div({},
+				DOM.button({
 					onClick: this.onToggle },
 					enabled? 'Disable' : 'Enable'
 				),
-				React.DOM.button({
+				DOM.button({
 					onClick: this.onToggleReadOnly },
 					'Set ' + (readOnly? 'read/Write' : 'read-only')
 				),
-				React.DOM.button({
+				DOM.button({
 					disabled: true },
 					'Selection: ('+selection+')'
 				)
 			)
 		);
-	},
+	}
 
-	renderSidebar: function() {
+	renderSidebar() {
 		return (
-			React.DOM.div({
+			DOM.div({
 				style: { overflow:'hidden', float:'right' }},
-				React.DOM.textarea({
+				DOM.textarea({
 					style: { display:'block', width:300, height:300 },
 					value: this.state.value,
 					onChange: this.onTextareaChange
 				}),
-				React.DOM.textarea({
+				DOM.textarea({
 					style: { display:'block', width:300, height:300 },
 					value: this.state.events.join('\n')
 				})
@@ -112,7 +120,7 @@ var Editor = React.createClass({
 		);
 	}
 
-});
+}
 
 Editor = React.createFactory(Editor);
 ReactQuill = React.createFactory(ReactQuill);
