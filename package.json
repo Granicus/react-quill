@@ -52,13 +52,13 @@
     "jshint": "^2.5.10",
     "mocha": "^2.0.1",
     "mocha-text-cov": "^0.1.0",
+    "prop-types": "^15.6.1",
     "react": "^16.3.0",
     "react-dom": "^16.3.0",
-    "prop-types": "^15.6.1",
     "should": "^4.3.0",
     "sinon": "^1.12.1",
     "travis-cov": "^0.2.5",
-    "uglify-js": "^2.4.15",
+    "uglify-js-es6": "^2.8.9",
     "webpack": "^1.4.13"
   }
 }
