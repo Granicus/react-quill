@@ -1,288 +1,372 @@
-'use strict';
+import React, { PropTypes, Component, cloneElement } from 'react'
+import Quill from 'quill'
+import ReactDOM from 'react-dom'
+import QuillToolbar from './toolbar'
+import { find } from './utils'
 
-var React = require('react'),
-	ReactDOM = require('react-dom'),
-	QuillToolbar = require('./toolbar'),
-	QuillMixin = require('./mixin'),
-	T = React.PropTypes;
+const dirtyProps = [
+  'id',
+  'className',
+  'modules',
+  'toolbar',
+  'formats',
+  'styles',
+  'theme',
+  'pollInterval'
+]
 
-// FIXME: Remove with the switch to JSX
-QuillToolbar = React.createFactory(QuillToolbar);
+class QuillComponent extends Component {
+  constructor (props){
+    super(props)
+    this.state = {
+      value: this.isControlled() ? this.props.value : this.props.defaultValue,
+      editor: null
+    }
+    console.log('props', this.props)
+    this.isControlled.bind(this)
+  }
 
-var QuillComponent = React.createClass({
+  isControlled() {
+    return 'value' in this.props;
+  }
 
-	displayName: 'Quill',
+  componentWillReceiveProps(nextProps) {
+    const editor = this.state.editor
+    // If the component is unmounted and mounted too quickly
+    // an error is thrown in setEditorContents since editor is
+    // still undefined. Must check if editor is undefined
+    // before performing this call.
+    if (editor) {
+      // Update only if we've been passed a new `value`.
+      // This leaves components using `defaultValue` alone.
+      if ('value' in nextProps) {
+        // NOTE: Seeing that Quill is missing a way to prevent
+        //       edits, we have to settle for a hybrid between
+        //       controlled and uncontrolled mode. We can't prevent
+        //       the change, but we'll still override content
+        //       whenever `value` differs from current state.
+        if (nextProps.value !== this.getEditorContents()) {
+          this.setEditorContents(editor, nextProps.value)
+        }
+      }
+      // We can update readOnly state in-place.
+      if ('readOnly' in nextProps) {
+        if (nextProps.readOnly !== this.props.readOnly) {
+          this.setEditorReadOnly(editor, nextProps.readOnly)
+        }
+      }
+    }
+  }
 
-	mixins: [ QuillMixin ],
+  componentDidMount() {
+    const editorEl = this.getEditorElement()
+    const editorConfig = this.getEditorConfig()
+    const editor = new Quill(editorEl, editorConfig)
 
-	propTypes: {
-		id: T.string,
-		className: T.string,
-		style: T.object,
-		value: T.string,
-		defaultValue: T.string,
-		readOnly: T.bool,
-		modules: T.object,
-		toolbar: T.oneOfType([ T.array, T.oneOf([false]), ]),
-		formats: T.array,
-		styles: T.oneOfType([ T.object, T.oneOf([false]) ]),
-		theme: T.string,
-		pollInterval: T.number,
-		onKeyPress: T.func,
-		onKeyDown: T.func,
-		onKeyUp: T.func,
-		onChange: T.func,
-		onChangeSelection: T.func
-	},
+    // this.setCustomFormats(editor); // deprecated in Quill v1.0
+    const fontOptions = document.querySelectorAll('.quill-toolbar .ql-font.ql-picker .ql-picker-item')
 
-	/*
-	Changing one of these props should cause a re-render.
-	*/
-	dirtyProps: [
-		'id',
-		'className',
-		'modules',
-		'toolbar',
-		'formats',
-		'styles',
-		'theme',
-		'pollInterval'
-	],
+    for (let i=0; i<fontOptions.length; ++i) {
+      fontOptions[i].style.fontFamily = fontOptions[i].dataset.value
+    }
 
-	getDefaultProps: function() {
-		return {
-			className: '',
-			theme: 'base',
-			modules: {
-				'link-tooltip': true,
-				'image-tooltip': true
-			}
-		};
-	},
+    this.setState({ editor })
+  }
 
-	/*
-	We consider the component to be controlled if
-	whenever `value` is bein sent in props.
-	*/
-	isControlled: function() {
-		return 'value' in this.props;
-	},
+  componentWillUnmount() {
+    // NOTE: Don't set the state to null here
+    //       as it would generate a loop.
+  }
 
-	getInitialState: function() {
-		return {
-			value: this.isControlled()
-				? this.props.value
-				: this.props.defaultValue
-		};
-	},
+  shouldComponentUpdate(nextProps, nextState) {
+    // Check if one of the changes should trigger a re-render.
+    for (var i=0; i< dirtyProps.length; i++) {
+      var prop = dirtyProps[i];
+      if (nextProps[prop] !== this.props[prop]) {
+        return true;
+      }
+    }
+    // Never re-render otherwise.
+    return false;
+  }
 
-	componentWillReceiveProps: function(nextProps) {
-		var editor = this.state.editor;
-		// If the component is unmounted and mounted too quickly
-		// an error is thrown in setEditorContents since editor is
-		// still undefined. Must check if editor is undefined
-		// before performing this call.
-		if (editor) {
-			// Update only if we've been passed a new `value`.
-			// This leaves components using `defaultValue` alone.
-			if ('value' in nextProps) {
-				// NOTE: Seeing that Quill is missing a way to prevent
-				//       edits, we have to settle for a hybrid between
-				//       controlled and uncontrolled mode. We can't prevent
-				//       the change, but we'll still override content
-				//       whenever `value` differs from current state.
-				if (nextProps.value !== this.getEditorContents()) {
-					this.setEditorContents(editor, nextProps.value);
-				}
-			}
-			// We can update readOnly state in-place.
-			if ('readOnly' in nextProps) {
-				if (nextProps.readOnly !== this.props.readOnly) {
-					this.setEditorReadOnly(editor, nextProps.readOnly);
-				}
-			}
-		}
-	},
+  /*
+  If for whatever reason we are rendering again,
+  we should tear down the editor and bring it up
+  again.
+  */
+  componentWillUpdate() {
+    this.componentWillUnmount();
+  }
 
-	componentDidMount: function() {
-		var editor = this.createEditor(
-			this.getEditorElement(),
-			this.getEditorConfig());
+  componentDidUpdate() {
+    this.componentDidMount();
+  }
 
-		this.setCustomFormats(editor);
+  /**
+   * @deprecated v1.0.0
+   */
+  setCustomFormats(editor) {
+    const { formats } = this.props
+    if (!formats) {
+      return
+    }
 
-		// NOTE: Custom formats will be stripped when creating
-		//       the editor, since they are not present there yet.
-		//       Therefore, we re-set the contents from state.
-		this.setState({ editor:editor }, function() {
-			this.setEditorContents(editor, this.state.value);
-		}.bind(this));
-	},
+    for (let i = 0; i < formats.length; i++) {
+      const format = formats[i]
+      editor.addFormat(format.name || format, format)
+    }
+  }
 
-	componentWillUnmount: function() {
-		this.destroyEditor(this.state.editor);
-		// NOTE: Don't set the state to null here
-		//       as it would generate a loop.
-	},
+  /**
+  Creates an editor on the given element. The editor will
+  be passed the configuration, have its events bound,
+  */
+  createEditor ($el, config) {
+    var editor =
+    this.hookEditor(editor);
+    return editor;
+  }
 
-	shouldComponentUpdate: function(nextProps, nextState) {
-		// Check if one of the changes should trigger a re-render.
-		for (var i=0; i<this.dirtyProps.length; i++) {
-			var prop = this.dirtyProps[i];
-			if (nextProps[prop] !== this.props[prop]) {
-				return true;
-			}
-		}
-		// Never re-render otherwise.
-		return false;
-	},
+  setEditorReadOnly(editor, value) {
+    value ? editor.disable() : editor.enable();
+  }
 
-	/*
-	If for whatever reason we are rendering again,
-	we should tear down the editor and bring it up
-	again.
-	*/
-	componentWillUpdate: function() {
-		this.componentWillUnmount();
-	},
+  /*
+  Replace the contents of the editor, but keep
+  the previous selection hanging around so that
+  the cursor won't move.
+  */
+  setEditorContents(editor, value) {
+    const sel = editor.getSelection()
+    editor.pasteHTML(value || '')
+    if (sel) this.setEditorSelection(editor, sel)
+  }
 
-	componentDidUpdate: function() {
-		this.componentDidMount();
-	},
 
-	setCustomFormats: function (editor) {
-		if (!this.props.formats) {
-			return;
-		}
+  getEditorConfig() {
+    const config = {
+      readOnly:     this.props.readOnly,
+      theme:        this.props.theme,
+      formats:      this.props.formats, // Let Quill set the defaults, if no formats supplied
+      styles:       this.props.styles,
+      modules:      this.props.modules,
+      pollInterval: this.props.pollInterval,
+      bounds:       this.props.bounds,
+      placeholder:  this.props.placeholder,
+    }
+    // Unless we're redefining the toolbar, or it has been explicitly
+    // disabled, attach to the default one as a ref.
+    // Note: Toolbar should be configured as a module for Quill v1.0.0 and above
+    // Pass toolbar={false} for versions >1.0
+    if (this.props.toolbar !== false && !config.modules.toolbar) {
+      // Don't mutate the original modules
+      // because it's shared between components.
+      config.modules = JSON.parse(JSON.stringify(config.modules))
+      config.modules.toolbar = {
+        container: ReactDOM.findDOMNode(this.refs.toolbar)
+      }
+    }
+    return config
+  }
 
-		for (var i = 0; i < this.props.formats.length; i++) {
-			var format = this.props.formats[i];
-			editor.addFormat(format.name || format, format);
-		}
-	},
 
-	getEditorConfig: function() {
-		var config = {
-			readOnly:     this.props.readOnly,
-			theme:        this.props.theme,
-			// Let Quill set the defaults, if no formats supplied
-			formats:      this.props.formats ? [] : undefined,
-			styles:       this.props.styles,
-			modules:      this.props.modules,
-			pollInterval: this.props.pollInterval
-		};
-		// Unless we're redefining the toolbar, or it has been explicitly
-		// disabled, attach to the default one as a ref.
-		if (this.props.toolbar !== false && !config.modules.toolbar) {
-			// Don't mutate the original modules
-			// because it's shared between components.
-			config.modules = JSON.parse(JSON.stringify(config.modules));
-			config.modules.toolbar = {
-				container: ReactDOM.findDOMNode(this.refs.toolbar)
-			};
-		}
-		return config;
-	},
+  hookEditor(editor) {
+    // Expose the editor on change events via a weaker,
+    // unprivileged proxy object that does not allow
+    // accidentally modifying editor state.
+    const unprivilegedEditor = this.makeUnprivilegedEditor(editor);
 
-	getEditor: function() {
-		return this.state.editor;
-	},
+    editor
+      .on('text-change', (delta, oldDelta, source) => {
+        if (this.onEditorChange) {
+          this.onEditorChange(
+            editor.root.innerHTML,
+            delta,
+            source,
+            unprivilegedEditor
+          )
+        }
+      })
 
-	getEditorElement: function() {
-		return ReactDOM.findDOMNode(this.refs.editor);
-	},
+    editor
+      .on('selection-change', (range, oldRange, source) => {
+        if (this.onEditorChangeSelection) {
+          this.onEditorChangeSelection(
+            range,
+            source,
+            unprivilegedEditor
+          )
+        }
+      })
+  }
 
-	getEditorContents: function() {
-		return this.state.value;
-	},
+  /*
+  Returns an weaker, unprivileged proxy object that only
+  exposes read-only accessors found on the editor instance,
+  without any state-modificating methods.
+  */
+  makeUnprivilegedEditor(editor) {
+    const e = editor
+    return {
+      getLength:    () => {e.getLength.apply(e, arguments) },
+      getText:      () => {e.getText.apply(e, arguments) },
+      getContents:  () => {e.getContents.apply(e, arguments) },
+      getSelection: () => {e.getSelection.apply(e, arguments) },
+      getBounds:    () => {e.getBounds.apply(e, arguments) },
+    }
+  }
 
-	getEditorSelection: function() {
-		return this.state.selection;
-	},
+  getEditor() {
+    return this.state.editor
+  }
 
-	/*
-	Renders either the specified contents, or a default
-	configuration of toolbar and contents area.
-	*/
-	renderContents: function() {
-		if (React.Children.count(this.props.children)) {
-			// Clone children to own their refs.
-			return React.Children.map(
-				this.props.children,
-				function(c) { return React.cloneElement(c, { ref: c.ref }) }
-			);
-		} else {
-			return [
-				// Quill modifies these elements in-place,
-				// so we need to re-render them every time.
+  getEditorElement() {
+    return ReactDOM.findDOMNode(this.refs.editor)
+  }
 
-				// Render the toolbar unless explicitly disabled.
-				this.props.toolbar !== false? QuillToolbar({
-					key: 'toolbar-' + Math.random(),
-					ref: 'toolbar',
-					items: this.props.toolbar
-				}) : false,
+  getEditorContents() {
+    return this.state.value;
+  }
 
-				React.DOM.div({
-					key: 'editor-' + Math.random(),
-					ref: 'editor',
-					className: 'quill-contents',
-					dangerouslySetInnerHTML: { __html:this.getEditorContents() }
-				})
-			];
-		}
-	},
+  getEditorSelection() {
+    return this.state.selection;
+  }
+  onEditorChange(value, delta, source, editor) {
+    if (value !== this.getEditorContents()) {
+      this.setState({ value });
+      if (this.props.onChange) {
+        this.props.onChange(value, delta, source, editor);
+      }
+    }
+  }
 
-	render: function() {
-		return React.DOM.div({
-			id: this.props.id,
-			style: this.props.style,
-			className: ['quill'].concat(this.props.className).join(' '),
-			onKeyPress: this.props.onKeyPress,
-			onKeyDown: this.props.onKeyDown,
-			onKeyUp: this.props.onKeyUp,
-			onChange: this.preventDefault },
-			this.renderContents()
-		);
-	},
+  onEditorChangeSelection(range, source, editor) {
+    const s = this.getEditorSelection() || {};
+    const r = range || {};
+    if (r.length !== s.length || r.index !== s.index) {
+      this.setState({ selection: range });
+      if (this.props.onChangeSelection) {
+        this.props.onChangeSelection(range, source, editor);
+      }
+    }
+  }
 
-	onEditorChange: function(value, delta, source, editor) {
-		if (value !== this.getEditorContents()) {
-			this.setState({ value: value });
-			if (this.props.onChange) {
-				this.props.onChange(value, delta, source, editor);
-			}
-		}
-	},
+  setEditorSelection(editor, range) {
+    if (range) {
+      // Validate bounds before applying.
+      var length = editor.getLength()
+      range.index = Math.max(0, Math.min(range.index, range.length-1))
+      range.length = length
+    }
+    editor.setSelection(range)
+  }
 
-	onEditorChangeSelection: function(range, source, editor) {
-		var s = this.getEditorSelection() || {};
-		var r = range || {};
-		if (r.start !== s.start || r.end !== s.end) {
-			this.setState({ selection: range });
-			if (this.props.onChangeSelection) {
-				this.props.onChangeSelection(range, source, editor);
-			}
-		}
-	},
 
-	focus: function() {
-		this.state.editor.focus();
-	},
+  focus() {
+    this.state.editor.focus()
+  }
 
-	blur: function() {
-		this.setEditorSelection(this.state.editor, null);
-	},
+  blur() {
+    this.setEditorSelection(this.state.editor, null)
+  }
 
-	/*
-	Stop change events from the toolbar from
-	bubbling up outside.
-	*/
-	preventDefault: function(event) {
-		event.preventDefault();
-		event.stopPropagation();
-	}
+  /*
+  Stop change events from the toolbar from
+  bubbling up outside.
+  */
+  preventDefault(event) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
 
-});
+  /*
+  Renders either the specified contents, or a default
+  configuration of toolbar and contents area.
+  */
+  renderContents() {
+    const contents = []
+    const children = React.Children.map(this.props.children, c => cloneElement(c, {ref: c.ref}) )
 
-module.exports = QuillComponent;
+    if (this.props.toolbar !== false) {
+      const toolbar = find(children, child => child.ref === 'toolbar')
+      let el
+      if(toolbar){
+        el = toolbar
+      } else {
+        el = (
+          <QuillToolbar
+            key={ `toolbar-${Math.random()}` }
+            ref={ 'toolbar' }
+            items={ this.props.toolbar }
+          />
+        )
+      }
+      contents.push(el)
+    }
+
+    const editor = find(children, child => child.ref === 'editor')
+
+    contents.push(editor ? editor : (
+        <div
+          key={`editor${Math.random()}`}
+          ref='editor'
+          className='quill-contents'
+          dangerouslySetInnerHTML={ {__html: this.getEditorContents()} }
+        >
+        </div>
+      )
+    )
+
+    return contents
+  }
+
+  render() {
+    const { id, style, className, onKeyPress, onKeyDown, onKeyUp } = this.props
+    return (
+      <div
+        id={ id }
+        style={ style }
+        className={ className }
+        onKeyPress={ onKeyPress }
+        onKeyDown={ onKeyDown }
+        onKeyUp={ onKeyUp }
+        onChange={ this.preventDefault }
+      >
+        { this.renderContents() }
+      </div>
+
+    )
+  }
+}
+
+QuillComponent.displayName = 'Quill'
+
+QuillComponent.propTypes = {
+	id: PropTypes.string,
+  className: PropTypes.string,
+  style: PropTypes.object,
+  value: PropTypes.string,
+  defaultValue: PropTypes.string,
+  placeholder: PropTypes.string,
+  readOnly: PropTypes.bool,
+  modules: PropTypes.object,
+  toolbar: PropTypes.oneOfType([ PropTypes.array, PropTypes.oneOf([false]), ]), // deprecated for v1.0.0, use toolbar module
+  formats: PropTypes.array,
+  styles: PropTypes.oneOfType([ PropTypes.object, PropTypes.oneOf([false]) ]),
+  theme: PropTypes.string,
+  pollInterval: PropTypes.number,
+  onKeyPress: PropTypes.func,
+  onKeyDown: PropTypes.func,
+  onKeyUp: PropTypes.func,
+  onChange: PropTypes.func,
+  onChangeSelection: PropTypes.func
+}
+
+QuillComponent.defaultProps = {
+	className: '',
+  theme: 'snow',
+  modules: {}
+}
+
+export default QuillComponent
